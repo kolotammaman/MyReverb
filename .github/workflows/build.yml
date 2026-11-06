@@ -24,7 +24,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-14, label: macOS }
+          - { os: macos-latest, label: macOS }
           - { os: windows-latest, label: Windows }
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +43,7 @@ jobs:
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
-        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+        run: cmake -B build -A x64
 
       - name: Build (macOS)
         if: runner.os == 'macOS'
