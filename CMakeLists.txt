@@ -10,8 +10,8 @@ add_subdirectory(JUCE)
 # Manufacturer/plugin codes match the original Projucer build ('Manu' / 'Ktc3'),
 # so existing DAW sessions keep finding the plugin.
 juce_add_plugin(MyReverb
-    COMPANY_NAME                "yourcompany"
-    BUNDLE_ID                   com.yourcompany.MyReverb
+    COMPANY_NAME                "madebymolo"
+    BUNDLE_ID                   com.madebymolo.MyReverb
     PLUGIN_MANUFACTURER_CODE    Manu
     PLUGIN_CODE                 Ktc3
     FORMATS                     AU VST3 Standalone

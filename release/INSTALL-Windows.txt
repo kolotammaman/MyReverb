@@ -1,0 +1,11 @@
+MyReverb - install on Windows
+
+1. Copy the MyReverb.vst3 folder to   C:\Program Files\Common Files\VST3\
+2. The standalone app (MyReverb.exe) can be run from anywhere.
+3. Restart your DAW and rescan plug-ins.
+
+These builds are not code-signed, so Windows SmartScreen may warn about an unrecognized publisher.
+Choose "More info", then "Run anyway" if it appears for the standalone app. The plug-in itself is
+loaded by your DAW and does not usually trigger it.
+
+Source code (AGPL-3.0): https://github.com/kolotammaman/MyReverb

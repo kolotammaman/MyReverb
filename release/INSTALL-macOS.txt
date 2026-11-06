@@ -1,0 +1,14 @@
+MyReverb - install on macOS
+
+1. Copy MyReverb.component to   ~/Library/Audio/Plug-Ins/Components/
+2. Copy MyReverb.vst3 to        ~/Library/Audio/Plug-Ins/VST3/
+3. The standalone app (MyReverb.app) can go anywhere, for example Applications.
+4. Restart your DAW and rescan plug-ins.
+
+These builds are not notarized by Apple, so macOS may refuse to open them the first time.
+If a plug-in does not show up or macOS says it cannot be verified, open Terminal and run:
+
+   xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/MyReverb.component
+   xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/MyReverb.vst3
+
+Source code (AGPL-3.0): https://github.com/kolotammaman/MyReverb

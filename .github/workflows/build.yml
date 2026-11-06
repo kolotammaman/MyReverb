@@ -1,0 +1,104 @@
+# Builds MyReverb for macOS (AU + VST3 + Standalone) and Windows (VST3 + Standalone).
+# Run it by hand from the Actions tab (Build and release > Run workflow) to get the zips as downloads on the run,
+# or push a version tag (git tag v1.0 && git push origin v1.0) to publish them as a GitHub Release.
+name: Build and release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PLUGIN: MyReverb
+  REPO: MyReverb
+  TAG: ${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+
+jobs:
+  build:
+    name: Build (${{ matrix.label }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-14, label: macOS }
+          - { os: windows-latest, label: Windows }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # The project copies the plug-in into the system folders after building (handy on your own Mac,
+      # but pointless and sometimes not allowed on a build machine), so switch that off here only.
+      - name: Don't install after building
+        shell: bash
+        run: sed -i.bak 's/COPY_PLUGIN_AFTER_BUILD *TRUE/COPY_PLUGIN_AFTER_BUILD FALSE/' CMakeLists.txt
+
+      - name: Configure (macOS)
+        if: runner.os == 'macOS'
+        run: cmake -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: cmake --build build --config Release --target MyReverb_AU MyReverb_VST3 MyReverb_Standalone
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: cmake --build build --config Release --target MyReverb_VST3 MyReverb_Standalone
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          A="build/${PLUGIN}_artefacts/Release"
+          OUT="dist/${PLUGIN}"
+          mkdir -p "$OUT"
+          cp -R "$A/AU/${PLUGIN}.component" "$OUT/"
+          cp -R "$A/VST3/${PLUGIN}.vst3" "$OUT/"
+          cp -R "$A/Standalone/${PLUGIN}.app" "$OUT/"
+          cp release/INSTALL-macOS.txt "$OUT/INSTALL.txt"
+          # Apple Silicon refuses to load unsigned code, so give everything an ad-hoc signature.
+          for item in "$OUT"/*.component "$OUT"/*.vst3 "$OUT"/*.app; do codesign --force --deep --sign - "$item"; done
+          cd dist && ditto -c -k --sequesterRsrc --keepParent "${PLUGIN}" "../${PLUGIN}-${TAG}-macOS.zip"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $a = "build/$env:PLUGIN" + "_artefacts/Release"
+          $out = "dist/$env:PLUGIN"
+          New-Item -ItemType Directory -Force $out | Out-Null
+          Copy-Item -Recurse "$a/VST3/$env:PLUGIN.vst3" $out
+          Copy-Item "$a/Standalone/$env:PLUGIN.exe" $out
+          Copy-Item release/INSTALL-Windows.txt "$out/INSTALL.txt"
+          Compress-Archive -Path $out -DestinationPath "$env:PLUGIN-$env:TAG-Windows.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PLUGIN }}-${{ matrix.label }}
+          path: ${{ env.PLUGIN }}-*.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${TAG}" artifacts/*.zip --repo "${{ github.repository }}" \
+            --title "${PLUGIN} ${TAG}" \
+            --notes "macOS (AU, VST3, Standalone) and Windows (VST3, Standalone). Each zip has an INSTALL.txt. Source code is in this repository (AGPL-3.0)."
